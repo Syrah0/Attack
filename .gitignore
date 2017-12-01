@@ -1,5 +1,9 @@
 reated by https://www.gitignore.io/api/c
 
+#  run
+
+run
+
 ### C ###
 # Prerequisites
 *.d
