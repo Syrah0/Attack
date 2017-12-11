@@ -47,20 +47,27 @@ def set_logic_suppliers(logic_network,n,n_inter,interdep_graph):
     candidates_list = []
     for k in range(len(logic_network_nodes_ids)):
         k_neighbors = interdep_graph.neighborhood_size(vertices=['l'+str(k)])
-        if k_neighbors == n_inter:
+        print k_neighbors, n_inter
+        print k_neighbors[0] == n_inter
+        if k_neighbors[0] == n_inter:
             candidates_list.append(k)
     max_sample = len(candidates_list)
+    print max_sample
+    print n
 
     sample = random.sample(candidates_list, min(max_sample,n))
 
     for k in sample:
         supplier_list[logic_network_nodes_ids[k]] = logic_network_nodes_ids[k]
+    print len(supplier_list.values())
 
     if n > max_sample:
-        for i in range(n-max_sample):
-            while len(supplier_list.values()) < (i+1) :
-                k = random.randint(0,len(logic_network_nodes_ids)-1)
-                supplier_list[logic_network_nodes_ids[k]] = logic_network_nodes_ids[k]
+        #for i in range(n-max_sample):
+        #    print i
+        #    while len(supplier_list.values()) < (i+1) :
+        while (len(supplier_list.values()) < n):
+            k = random.randint(0,len(logic_network_nodes_ids)-1)
+            supplier_list[logic_network_nodes_ids[k]] = logic_network_nodes_ids[k]
 
     return supplier_list.values()
 
@@ -92,13 +99,14 @@ def set_interdependencies(physical_network,logic_network,max_number_of_interdepe
     # for each logic node select an x between 1 and max_number_of_interdependencies
     for logic_node in logic_network_nodes_ids:
         amount_of_neighbours = random.randint(1,max_number_of_interdependencies)
-        print logic_node
+        print amount_of_neighbours
         # select x nodes from the physical network at random
         print "connections"
         for i in range(amount_of_neighbours):
             physical_node_index = random.randint(0,len(physical_network_nodes_ids)-1)
+            print physical_node_index
             physical_node = physical_network_nodes_ids[physical_node_index]
-            print physical_node, physical_node_index
+    #        print physical_node, physical_node_index
             # set the connections in the connection list by id
             connections.append((logic_node,physical_node))
            # print logic_node,physical_node;
@@ -108,15 +116,7 @@ def set_interdependencies(physical_network,logic_network,max_number_of_interdepe
     graph = igraph.Graph(len(physical_network_nodes_ids)+len(physical_nodes_included))
     graph.vs['name'] = physical_nodes_included.values() + logic_network_nodes_ids
 
-    print physical_nodes_included.values()
-    print len(graph.vs)
-    print "GRAFOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n"
-    print graph.vs['name']
     graph.add_edges(connections)
-    print "\n\n"
-    print connections
-    print "\n\n"
-    print graph.outdegree()
     return graph
 
 

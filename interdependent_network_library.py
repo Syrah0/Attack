@@ -189,7 +189,7 @@ class InterdependentGraph(object):
         current_graph_B = self.physical_network
         current_interaction_graph = self.interactions_network
 
-        print "attack"
+     ##   print "attack"
      ##   print list_of_nodes_to_delete
 
         while True:
@@ -219,6 +219,9 @@ class InterdependentGraph(object):
                # print "----------------"
                 current_nodes_without_connection_to_provider_in_A = \
                     set([a[1] for a in zipped_list_A if a[0]==float('inf')])
+               
+
+               # print "AQUIIIIIIIII VERRRRRRRR\n"
                # print current_nodes_without_connection_to_provider_in_A
                 nodes_without_connection_to_provider_in_A = \
                     nodes_without_connection_to_provider_in_A\
@@ -239,7 +242,7 @@ class InterdependentGraph(object):
                     nodes_without_connection_to_provider_in_B\
                         .intersection(current_nodes_without_connection_to_provider_in_B)
             # save the names (unique identifier) of the nodes lost because can't access a provider
-            print "-----------------"
+          #  print "-----------------"
             names_of_nodes_lost_in_A = set(current_graph_A.vs(list(nodes_without_connection_to_provider_in_A))['name'])
             names_of_nodes_lost_in_B = set(current_graph_B.vs(list(nodes_without_connection_to_provider_in_B))['name'])
           #  print current_graph_B.vs(list(nodes_without_connection_to_provider_in_B))['name']
@@ -253,11 +256,13 @@ class InterdependentGraph(object):
             # Get the nodes lost because they have lost all support from the other network
             zipped_list_interactions = zip(current_interaction_graph.degree(),current_interaction_graph.vs['name'])
             # Add them to the nodes to delete on the next iteration
-            print list_of_nodes_to_delete
-            print "despues .. "
+          #  print list_of_nodes_to_delete
+          #  print "despues .. "
             list_of_nodes_to_delete = [a[1] for a in zipped_list_interactions if a[0] < 1]
-            print list_of_nodes_to_delete
+          #  print list_of_nodes_to_delete
 
+      #  print len(self.AS_network.vs)
+      #  print len(self.physical_network.vs)
         return self
 
     def get_ratio_of_funtional_nodes_in_AS_network(self):

@@ -15,6 +15,7 @@
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 //#include "dictionary.c"
 
 int weighted_choice(igraph_vector_t c1, float* c2, int n);
@@ -55,19 +56,12 @@ int vectorHas(igraph_vector_t vector, int val){
 	return 0;
 }
 
-void print_vector(igraph_vector_t *v, FILE *f) {
-  long int i;
-  for (i=0; i<igraph_vector_size(v); i++) {
-    fprintf(f, " %li", (long int) VECTOR(*v)[i]);
-  }
-  fprintf(f, "\n");
-}
-
 igraph_vector_t randomSample(igraph_vector_t cand, int val){
 	igraph_vector_t sample;
 	igraph_vector_init(&sample,0);
 	int i = 0;
 	int length = (int)igraph_vector_size(&cand);
+	srand(time(NULL));
 	while(1){
 		if(i == val){
 			break;
@@ -106,6 +100,7 @@ igraph_t generate_physical_network(int n, double x_axis, double y_axis){
 	igraph_vector_init(&x_coordinates,0);
 	igraph_vector_init(&y_coordinates,0);
 
+	srand(time(NULL));
 	for(int i = 0; i < n; i++){
 		double rand_x = (double)rand()/(RAND_MAX + 1.0) * x_axis_max_value;
 		double rand_y = (double)rand()/(RAND_MAX + 1.0) * y_axis_max_value;
@@ -155,8 +150,8 @@ igraph_t generate_physical_network(int n, double x_axis, double y_axis){
 		igraph_strvector_add(&id_list,id);
 	}
 	igraph_cattribute_VAS_setv(&graph,"name",&id_list);
-	fprintf(stderr, "PASS 7\n");
-	printStr(&id_list);
+	//fprintf(stderr, "PASS 7\n");
+	//printStr(&id_list);
 	return graph;
 }
 
@@ -171,7 +166,7 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 	igraph_vector_init(&candidates_list,0);
 
 	Dict supplier_list = NULL;
-	fprintf(stderr, "size: %d\n", (int)igraph_strvector_size(&logic_network_nodes_ids));
+	int init_number_of_nodes_logic = (int)igraph_vcount(&interdep_graph) - (int)igraph_vcount(&logic_network);
 
 	for(int k = 0; k < (int)igraph_strvector_size(&logic_network_nodes_ids); k++){
 		igraph_vector_t k_neighbors;
@@ -179,32 +174,19 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 		char attr[30];
 		sprintf(attr, "l%d", k);
 		int node_neigh;
-		node_neigh = searchNode(logic_network,attr);
-		/*for(int j = 0; j < igraph_strvector_size(&logic_network_nodes_ids); j++){
-			char *str;
-			igraph_strvector_get(&logic_network_nodes_ids,j,&str);	
-			if(strcmp(attr,str) == 0){
-				node_neigh = j;
-				break;
-			}
-		}
-		*/
-// LISTO
-		// .. vertice que su attr name sea igual a lK
-		// SERA K O NO??? -> SE BUSCA EN INTERDEP_GRAPH EL NODO QUE CUMPLA QUE SU ATTR NAME SEA LK? 
-		// => DEBO BUSCAR QUE NODO LO CUMPLE ?? O SIEMPRE ESTARAN EN ORDEN ??
-		// QUE PASA SI SE ELIMINAN NODOS????
+		node_neigh = searchNode(logic_network,attr) + init_number_of_nodes_logic;
+		fprintf(stderr, "node:: %d\n", node_neigh);
 
-		/* ?? */ igraph_neighborhood_size(&interdep_graph,&k_neighbors,igraph_vss_1(node_neigh),1,IGRAPH_ALL);
+		igraph_neighborhood_size(&interdep_graph,&k_neighbors,igraph_vss_1(node_neigh),1,IGRAPH_ALL);
 		print_vector(&k_neighbors,stdout);
-		fprintf(stderr, "n:inter: %d\n", n_inter);
+		fprintf(stderr, "inter: %d\n", n_inter);
 		if((int)igraph_vector_e(&k_neighbors,0) == n_inter){
 			igraph_vector_push_back(&candidates_list,k);
 		}
 	}
 	int max_sample = igraph_vector_size(&candidates_list);
-	fprintf(stderr, "max: %d, n: %d\n",max_sample,n);
 	int min_value = min(max_sample,n);
+	fprintf(stderr, "max: %d, n: %d, min: %d\n",max_sample,n,min_value);
 
 	igraph_vector_t sample = randomSample(candidates_list, min_value);
 
@@ -217,13 +199,16 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 			values++;
 		}		
 	}
+	fprintf(stderr, "val: %d\n", values);
 // OJO!!!!!!!!!!!!!!!!!
-	printDict(&supplier_list);
+//	printDict(&supplier_list);
 
 	/* VER ESTO */
+	srand(time(NULL));
 	if(n > max_sample){
-		for(int i = 0; i < (n-max_sample); i++){
-			while(values < (i+1)){ // VER QUE HACE :oooo
+		//for(int i = 0; i < (n-max_sample); i++){
+			//while(values < (i+1)){ // VER QUE HACE :oooo
+			while(values < n){
 				char *attr;
 				int k = rand() % ((int)igraph_strvector_size(&logic_network_nodes_ids));
 				//fprintf(stderr, "rand: %d, size: %d\n", k, (int)igraph_strvector_size(&logic_network_nodes_ids));
@@ -234,9 +219,9 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 					values++;
 				}
 			}
-		}
+		//}
 	}
-	fprintf(stderr, "PASO 10\n");
+	//fprintf(stderr, "PASO 10\n");
 
 	igraph_strvector_t supplier_list_ret;
 	igraph_strvector_init(&supplier_list_ret,0);
@@ -258,7 +243,7 @@ igraph_t generate_logic_network(int n, float alpha){
 	igraph_t graph = generate_power_law_graph(n, alpha, 0.1);
 	igraph_strvector_t id_list;
 	igraph_strvector_init(&id_list,0);
-	fprintf(stderr, "PASS 1\n");
+	//fprintf(stderr, "PASS 1\n");
 	for(int i = 0; i < n; i++){
 		char id[30];
 		sprintf(id, "l%d",i);
@@ -266,9 +251,9 @@ igraph_t generate_logic_network(int n, float alpha){
 		//fprintf(stderr, "id: %s\n", id);
 	}
 	igraph_cattribute_VAS_setv(&graph,"name",&id_list);
-	fprintf(stderr, "PASS 6\n");
-	printStr(&id_list);
-	fprintf(stderr, "SIZE: %d\n", (int)igraph_vcount(&graph));
+	//fprintf(stderr, "PASS 6\n");
+//	printStr(&id_list);
+	//fprintf(stderr, "SIZE: %d\n", (int)igraph_vcount(&graph));
 	return graph;
 }
 
@@ -309,9 +294,9 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 	igraph_cattribute_VASV(&physical_network, "name", igraph_vss_all(), &physical_network_nodes_ids);
 	igraph_cattribute_VASV(&logic_network, "name", igraph_vss_all(), &logic_network_nodes_ids);
 	
-	fprintf(stderr, "PASS 8\n");
-	printStr(&physical_network_nodes_ids);
-	printStr(&logic_network_nodes_ids);
+	//fprintf(stderr, "PASS 8\n");
+//	printStr(&physical_network_nodes_ids);
+//	printStr(&logic_network_nodes_ids);
 
 	Dict physical_nodes_included = NULL;
 	//igraph_strvector_t physical_nodes_included;
@@ -319,16 +304,18 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 
 	igraph_t graph;
 	igraph_empty(&graph,(int)(igraph_strvector_size(&physical_network_nodes_ids)+igraph_strvector_size(&logic_network_nodes_ids)),IGRAPH_UNDIRECTED);
+	srand(time(NULL));
 	for(int i = 0; i < (int)igraph_strvector_size(&logic_network_nodes_ids); i++){
 		int amount_of_neighbours  = 1 + (int)rand() / (RAND_MAX / (max_number_of_interdependencies) + 1);
-		fprintf(stderr, "neigh: %d, num: %d\n", amount_of_neighbours, max_number_of_interdependencies);
+		fprintf(stderr, "neigh: %d\n", amount_of_neighbours);
 		for(int j = 0; j < amount_of_neighbours; j++){
 			int physical_node_index = (int)rand() / (RAND_MAX / (int)igraph_strvector_size(&physical_network_nodes_ids) + 1);
+			fprintf(stderr, "phys: %d\n", physical_node_index);
 			char *physical_node, *logic_node;
 			igraph_strvector_get(&physical_network_nodes_ids,physical_node_index,&physical_node);
 			igraph_strvector_get(&logic_network_nodes_ids,i,&logic_node);
 			
-			fprintf(stderr, "PASS 9\n");
+			//fprintf(stderr, "PASS 9\n");
 			//fprintf(stderr, "phys: %s, log:  %s\n", physical_node,  logic_node);		
 			if(!dict_has(&physical_nodes_included,physical_node)){
 				dict_add(&physical_nodes_included,physical_node,physical_node);
@@ -344,24 +331,32 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 			igraph_add_edge(&graph,lNode,pNode);
 			igraph_cattribute_VAS_set(&graph,"name",lNode,logic_node);
 			igraph_cattribute_VAS_set(&graph,"name",pNode,physical_node);
+
+//			char *query1 = (char*)igraph_cattribute_VAS(&graph,"name",lNode);
+//			char *query2 = (char*)igraph_cattribute_VAS(&graph,"name",pNode);
+
+			//fprintf(stderr, "q1: %s, q2: %s\n", query1,query2);
 		}
 	}
 	igraph_strvector_t dictVal;
 	dictVal = dict_values(&physical_nodes_included);
 
-	printStr(&dictVal);
-
+	//printStr(&dictVal);
+	int newI = 0;
 	for(int i = 0; i < (int)igraph_vcount(&graph); i++){
 		char *query = (char*)igraph_cattribute_VAS(&graph,"name",i);
 		if(query[0]  != 'l' && query[0] != 'p'){
 			char *val;
 			//fprintf(stderr, "NUEVO\n");
-			int indexVal = i%((int)igraph_strvector_size(&dictVal));
+	//		fprintf(stderr, "No attr node: %d\n", i);
+			int indexVal = newI%((int)igraph_strvector_size(&dictVal));
 			igraph_strvector_get(&dictVal,indexVal,&val);
+	//		fprintf(stderr, "Set attr %s index: %d\n", val,indexVal);
 			igraph_cattribute_VAS_set(&graph,"name",i,val);
+			newI++;
 		}
 	}
-	fprintf(stderr, "vcount: %d\n", (int)igraph_vcount(&graph));
+	//fprintf(stderr, "vcount: %d\n", (int)igraph_vcount(&graph));
 	//PRINT DICT!!
 
 	return graph;
@@ -372,7 +367,7 @@ igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 	igraph_vector_t node_degrees;
 	while(1){
 		node_degrees = get_degrees_power_law(n,lamda);
-		fprintf(stderr, "PASS 3\n");	
+		//fprintf(stderr, "PASS 3\n");	
 		int sum = igraph_vector_sum(&node_degrees);
 		int length = igraph_vector_size(&node_degrees);
 		//print_vector(&node_degrees,stdout);
@@ -382,9 +377,9 @@ igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 	}
 	// a/2 < n-1 => falla (a = sum de grados y n = tamaño vector)
 	// VER SECUENCIA VALIDA!!
-	fprintf(stderr, "PASS 4\n");	
+	//fprintf(stderr, "PASS 4\n");	
 	igraph_degree_sequence_game(&g,&node_degrees,0,IGRAPH_DEGSEQ_VL);	
-	fprintf(stderr, "PASS 5\n");
+	//fprintf(stderr, "PASS 5\n");
 	return g;
 	// ver tema de exceptions
 }
@@ -428,7 +423,7 @@ int weighted_choice(igraph_vector_t c1, float* c2, int n){
 	}
 //	fprintf(stderr, "total: %lf\n", total);
 	//srand((unsigned) time(&t));
-	srand(rand());
+	srand(time(NULL));
 	float r = (float)rand()/(RAND_MAX + 1.0) * total;
 //	fprintf(stderr, "r = %lf\n", r);
 	float up_to = 0;

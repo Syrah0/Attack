@@ -24,6 +24,13 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 		igraph_strvector_t AS_provider_nodes,physical_provider_nodes;
 		igraph_strvector_init(&AS_provider_nodes,0);
 		igraph_strvector_init(&physical_provider_nodes,0);
+		
+		fprintf(stderr, "%s\n", "AQUI");
+		fprintf(stderr, "%s\n", AS_title);
+		fprintf(stderr, "%s\n", phys_title);
+		fprintf(stderr, "%s\n", interd_title);
+		fprintf(stderr, "%s\n", providers_title);
+
 		network_system = create_from_csv(network_system,AS_title,phys_title,interd_title,providers_title,AS_provider_nodes,physical_provider_nodes);
 
 		fprintf(stderr, "system created %lf\n", ((double)clock() / CLOCKS_PER_SEC));
