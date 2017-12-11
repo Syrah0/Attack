@@ -47,19 +47,19 @@ def set_logic_suppliers(logic_network,n,n_inter,interdep_graph):
     candidates_list = []
     for k in range(len(logic_network_nodes_ids)):
         k_neighbors = interdep_graph.neighborhood_size(vertices=['l'+str(k)])
-        print k_neighbors, n_inter
-        print k_neighbors[0] == n_inter
+        #print k_neighbors, n_inter
+        #print k_neighbors[0] == n_inter
         if k_neighbors[0] == n_inter:
             candidates_list.append(k)
     max_sample = len(candidates_list)
-    print max_sample
-    print n
+    #print max_sample
+    #print n
 
     sample = random.sample(candidates_list, min(max_sample,n))
 
     for k in sample:
         supplier_list[logic_network_nodes_ids[k]] = logic_network_nodes_ids[k]
-    print len(supplier_list.values())
+    #print len(supplier_list.values())
 
     if n > max_sample:
         #for i in range(n-max_sample):
@@ -99,12 +99,12 @@ def set_interdependencies(physical_network,logic_network,max_number_of_interdepe
     # for each logic node select an x between 1 and max_number_of_interdependencies
     for logic_node in logic_network_nodes_ids:
         amount_of_neighbours = random.randint(1,max_number_of_interdependencies)
-        print amount_of_neighbours
+        #print amount_of_neighbours
         # select x nodes from the physical network at random
-        print "connections"
+        #print "connections"
         for i in range(amount_of_neighbours):
             physical_node_index = random.randint(0,len(physical_network_nodes_ids)-1)
-            print physical_node_index
+            #print physical_node_index
             physical_node = physical_network_nodes_ids[physical_node_index]
     #        print physical_node, physical_node_index
             # set the connections in the connection list by id
@@ -127,6 +127,8 @@ def generate_power_law_graph(n, lamda, epsilon):
              g = igraph.Graph.Degree_Sequence(node_degrees, method="vl")
              # print "------------------------", alpha, lamda, "--------------------------"
              print "success"
+             print "degrees"
+             print node_degrees
              return g
         except Exception, e:
              #diff = epsilon + 1
@@ -135,7 +137,6 @@ def generate_power_law_graph(n, lamda, epsilon):
              pass
         except Warning,w:
              pass
-
     return g
     # results = powerlaw.Fit(node_degrees, discrete=True)
     # alpha = results.power_law.alpha

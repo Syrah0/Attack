@@ -259,7 +259,7 @@ class InterdependentGraph(object):
           #  print list_of_nodes_to_delete
           #  print "despues .. "
             list_of_nodes_to_delete = [a[1] for a in zipped_list_interactions if a[0] < 1]
-          #  print list_of_nodes_to_delete
+            print list_of_nodes_to_delete
 
       #  print len(self.AS_network.vs)
       #  print len(self.physical_network.vs)

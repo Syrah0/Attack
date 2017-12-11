@@ -7,14 +7,15 @@
 #include "interdependent_network_library.c"
 #include "test_gen.c"
 #include "network_gen.c"
+#include <time.h>
+
+// VER TEMA DE QUE WEA PARALELIZAR Y COMO PARALELIZARLO :o
 
 void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter, int n_logic_suppliers, char *version, int n_logic, int n_phys, int READ_flag){
 	InterdependentGraph network_system = initInterGraph();
 	if(READ_flag){
 		fprintf(stderr, "start %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-		
-		//InterdependentGraph network_system = initInterGraph();
-		
+				
 		char AS_title[300],phys_title[300],interd_title[300],providers_title[300];
 		sprintf(AS_title,"networks/%s",csv_title_generator("logic",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"",version));
 		sprintf(phys_title,"networks/%s",csv_title_generator("physic",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"",version));
@@ -24,35 +25,39 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 		igraph_strvector_t AS_provider_nodes,physical_provider_nodes;
 		igraph_strvector_init(&AS_provider_nodes,0);
 		igraph_strvector_init(&physical_provider_nodes,0);
-		
-		fprintf(stderr, "%s\n", "AQUI");
-		fprintf(stderr, "%s\n", AS_title);
-		fprintf(stderr, "%s\n", phys_title);
-		fprintf(stderr, "%s\n", interd_title);
-		fprintf(stderr, "%s\n", providers_title);
 
 		network_system = create_from_csv(network_system,AS_title,phys_title,interd_title,providers_title,AS_provider_nodes,physical_provider_nodes);
 
 		fprintf(stderr, "system created %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 	}
 	else{
+		igraph_vector_t member, csize;
+		igraph_integer_t num;
+		igraph_vector_init(&member,0);
+		igraph_vector_init(&csize,0);
+
 		fprintf(stderr, "start %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 		
 		igraph_t as_graph = generate_logic_network(n_logic,exp);
 
-		fprintf(stderr, "amount of connected components %d\n", 0 /*, .. */); // VER!! CLUSTERS
+		igraph_clusters(&as_graph, &member, &csize, &num, IGRAPH_WEAK);
+
+		fprintf(stderr, "amount of connected components %d\n", (int)num); 
 		fprintf(stderr, "AS ready %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
 		igraph_t phys_graph = generate_physical_network(n_phys,x_coordinate,y_coordinate);
+
+		igraph_vector_clear(&member);
+		igraph_vector_clear(&csize);
+		igraph_clusters(&as_graph, &member, &csize, &num, IGRAPH_WEAK);
 	
 		fprintf(stderr, "phys ready %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-		fprintf(stderr, "amount of connected components %d\n", 0 /*, .. */); // VER!! CLUSTERS
+		fprintf(stderr, "amount of connected components %d\n", (int)num);
 
 		igraph_t interdep_graph = set_interdependencies(phys_graph, as_graph, n_inter);
 	
 		fprintf(stderr, "interdep ready %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 	
-	// VER ESTE TIPO DE ASIGNACION SINO HACE COPY
 		igraph_strvector_t as_suppliers = set_logic_suppliers(as_graph,n_logic_suppliers,n_inter,interdep_graph);
 
 		fprintf(stderr, "AS suppliers ready %lf\n", ((double)clock() / CLOCKS_PER_SEC));
@@ -61,7 +66,6 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 
 		fprintf(stderr, "Phys suppliers ready %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
-		//InterdependentGraph network_system = initInterGraph();
 		network_system = create_from_graph(network_system,as_graph,as_suppliers,phys_graph,phys_suppliers,interdep_graph);
 
 		fprintf(stderr, "system created %lf\n", ((double)clock() / CLOCKS_PER_SEC));
@@ -80,16 +84,14 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 	fprintf(stderr, "physical test attack %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
 	char *physical_attack_title = csv_title_generator("result",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"physical",version);
-	//char output[300];
 	sprintf(output,"test_results/%s",physical_attack_title);
 	single_network_attack(network_system,"physical",output);
 
 	fprintf(stderr, "whole net test attack %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
 	char *simult_attack_title = csv_title_generator("result",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"both",version);
-	//char output[300];
 	sprintf(output,"test_results/%s",simult_attack_title);
-	single_network_attack(network_system,"logic",output);
+	whole_system_attack(network_system,output);
 
 	fprintf(stderr, "---------------- Finished --------------- %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 }
@@ -98,7 +100,6 @@ int main(int argc, char **argv){
 	int READ_flag, n_logic, n_inter, n_phys, n_logic_suppliers;
 	double exp, x_coordinate, y_coordinate;
 	char *version;
-	//fprintf(stderr, "argc: %d\n", argc);
 
 	if(argc == 9 || argc == 10){
 
@@ -109,9 +110,7 @@ int main(int argc, char **argv){
 		exp = atof(argv[5]);
 		x_coordinate = atof(argv[6]);
 		y_coordinate = atof(argv[7]);
-		version = argv[8];
-
-		//fprintf(stderr, "-v: %s\n", version);
+		version = argv[8]; // SE VA A TENER QUE ARREGLAR PARA EL PARALELISMO
 
 		if(argc == 10){
 			READ_flag = atoi(argv[9]);
@@ -120,6 +119,7 @@ int main(int argc, char **argv){
 			READ_flag = 0;
 		}
 
+		srand(time(NULL));
 		run_test(x_coordinate, y_coordinate, exp, n_inter, n_logic_suppliers, version, n_logic, n_phys, READ_flag);
 		return 0;
 	}
