@@ -56,6 +56,7 @@ void dict_add(volatile Dict *dictionary, const char *key, char *value) {
 		}
 		ptr->next = newDict;
 	}
+	//fprintf(stderr, "%s\n", "AÑADIDO");
 }
 
 int dict_has(Dict *dictionary, const char *key) {
@@ -82,19 +83,20 @@ char* dict_get(Dict *dictionary, const char *key) {
     return 0;
 }
 
-void kv_free(KVPair kv){
-	free(kv->key);
-	free(kv->value);
-	free(kv);
+void kv_free(KVPair *kv){
+	KVPair ptr = *kv;
+	free(ptr->key);
+	free(ptr->value);
+	free(ptr);
 }
 
 void dict_free(Dict *dictionary) {
 	Dict ptr = *dictionary;
-    if(dictionary != NULL){
-	    kv_free(ptr->head);
-	    Dict next = ptr->next;
-	    dict_free(&next);
-	    free(ptr);
+    while(ptr != NULL){
+	    kv_free(&ptr->head);
+	    ptr = ptr->next;
+	    //dict_free(&next);
+	    //free(ptr);
 	}
 }
 

@@ -15,14 +15,6 @@ typedef struct interp{
 
 InterdependentGraph initInterGraph(){
 	InterdependentGraph graph;// = (InterdependentGraph)malloc(sizeof(*graph));
-	/*igraph_empty(&graph->AS_network,0,IGRAPH_UNDIRECTED);
-	igraph_empty(&graph->physical_network,0,IGRAPH_UNDIRECTED);
-	igraph_empty(&graph->interactions_network,0,IGRAPH_UNDIRECTED);
-	igraph_strvector_init(&graph->physical_providers,0);
-	igraph_strvector_init(&graph->AS_providers,0);
-	graph->initial_number_of_functional_nodes_in_AS_net = 0;
-	return graph;
-	*/
 	igraph_empty(&graph.AS_network,0,IGRAPH_UNDIRECTED);
 	igraph_empty(&graph.physical_network,0,IGRAPH_UNDIRECTED);
 	igraph_empty(&graph.interactions_network,0,IGRAPH_UNDIRECTED);
@@ -30,6 +22,16 @@ InterdependentGraph initInterGraph(){
 	igraph_strvector_init(&graph.AS_providers,0);
 	graph.initial_number_of_functional_nodes_in_AS_net = 0;
 	return graph;
+}
+
+void freeInter(InterdependentGraph *graph){
+	InterdependentGraph ptr = *graph;
+	igraph_destroy(&ptr.AS_network);
+	igraph_destroy(&ptr.physical_network);
+	igraph_destroy(&ptr.interactions_network);
+	igraph_strvector_destroy(&ptr.physical_providers);
+	igraph_strvector_destroy(&ptr.AS_providers);
+	//free(graph);
 }
 
 void print_vector(igraph_vector_t *v, FILE *f) {
@@ -85,8 +87,10 @@ char* csv_title_generator(char* graph_type, float x_coordinates, float y_coordin
 	}
 	strcat(title,".csv");
 
-	char *ret = (char*)malloc(strlen(title)*sizeof(char));
+	char *ret = (char*)malloc((strlen(title)+1)*sizeof(char));
+	
 	strcpy(ret,title);
+	ret[strlen(title)] = 0;
 	return ret;
 }
 
@@ -134,6 +138,10 @@ igraph_t set_graph_from_csv(char* csv_file, igraph_t graph){
 		igraph_empty(&graph,k,IGRAPH_UNDIRECTED);
 		igraph_cattribute_VAS_setv(&graph,"name",&names_list);
 		igraph_add_edges(&graph,&edge_list,0);
+		igraph_vector_destroy(&edge_list);
+		igraph_strvector_destroy(&names_list);
+		dict_free(&rename_map);
+		free(rename_map);
 	}
 	else{
 		while(feof(F) == 0){
@@ -189,7 +197,12 @@ void write_graph_with_node_names(igraph_t graph, char* title){
 		fputs(str,F);
 	}
 	fclose(F);
+	igraph_strvector_destroy(&names);
+	igraph_vector_destroy(&lst);
+	//fprintf(stderr, "%s\n", "FIN");
 }
+
+
 
 void save_to_pdf(InterdependentGraph Igraph, float x_coordinates, float y_coordinates, double pg_exponent, int n_dependence, char *version){
 	igraph_t logic_graph = Igraph.AS_network;
@@ -201,20 +214,38 @@ void save_to_pdf(InterdependentGraph Igraph, float x_coordinates, float y_coordi
 	char filename[300];
 	FILE *F;
 
+//	fprintf(stderr, "%s\n", "pass 1");
 	char *logic_name = csv_title_generator("logic",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
+//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",logic_name);
 	write_graph_with_node_names(logic_graph,filename);
+//	fprintf(stderr, "%s\n", "write rdy");
 
+	free(logic_name);
+
+//	fprintf(stderr, "%s\n", "pass 2");
 	char *physical_name = csv_title_generator("physic",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
+//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",physical_name);	
 	write_graph_with_node_names(physical_graph,filename);
+//	fprintf(stderr, "%s\n", "write rdy");
 
+	free(physical_name);
+	
+//	fprintf(stderr, "%s\n", "pass 3");
 	char *dependence_name = csv_title_generator("dependence",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
+//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",dependence_name);
 	write_graph_with_node_names(dependences_graph,filename);
+//	fprintf(stderr, "%s\n", "write rdy");
 
+	free(dependence_name);
+
+//	fprintf(stderr, "%s\n", "pass 4");
 	char *providers_name = csv_title_generator("providers",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
+//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",providers_name);
+//	fprintf(stderr, "%s\n", "pass 5");
 	F = fopen(filename,"w");
 	if(F ==  NULL){
 		fprintf(stderr, "%s\n", "Error Archivo");
@@ -237,6 +268,7 @@ void save_to_pdf(InterdependentGraph Igraph, float x_coordinates, float y_coordi
 		}
 	}
 	fclose(F);
+	free(providers_name);
 }
 
 InterdependentGraph create_from_csv(InterdependentGraph self, char *AS_net_csv, char *physical_net_csv, char *interactions_csv, char *providers_csv/*=""*/, igraph_strvector_t AS_provider_nodes/*=[]*/, igraph_strvector_t physical_provider_nodes/*=[]*/){
@@ -314,7 +346,10 @@ InterdependentGraph create_from_csv(InterdependentGraph self, char *AS_net_csv, 
 	}
 	
 	self.initial_number_of_functional_nodes_in_AS_net  = nodes;
-
+	igraph_strvector_destroy(&physical_net_name_list);
+	igraph_strvector_destroy(&as_net_name_list);
+	igraph_vector_destroy(&type_list);
+	igraph_vector_destroy(&degrees);
 	return self;
 }
 
@@ -377,7 +412,10 @@ InterdependentGraph create_from_graph(InterdependentGraph self, igraph_t AS_grap
 	}
 	
 	self.initial_number_of_functional_nodes_in_AS_net  = nodes;
-
+	igraph_strvector_destroy(&physical_net_name_list);
+	igraph_strvector_destroy(&as_net_name_list);
+	igraph_vector_destroy(&type_list);
+	igraph_vector_destroy(&degrees);
 	return self;
 }
 
@@ -398,7 +436,6 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 	igraph_strvector_t nodes_to_delete_in_A, nodes_to_delete_in_B;
 	igraph_strvector_init(&nodes_to_delete_in_A,0);
 	igraph_strvector_init(&nodes_to_delete_in_B,0);
-
 
 	while(1){
 		if(igraph_strvector_size(&list_of_nodes_to_delete) == 0){
@@ -453,6 +490,7 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 		igraph_vector_t nodes_without_connection_to_provider_in_A,range;
 		igraph_vector_init(&nodes_without_connection_to_provider_in_A,0);
 		igraph_vector_init(&range,0);
+
 		for(int i = 0; i < (int)igraph_vcount(&current_graph_A); i++){
 			igraph_vector_push_back(&nodes_without_connection_to_provider_in_A,i);
 			igraph_vector_push_back(&range,i);
@@ -462,6 +500,7 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 		igraph_strvector_init(&alive_nodes_in_A,0);
 		igraph_cattribute_VASV(&current_graph_A,"name",igraph_vss_all(),&alive_nodes_in_A);
 		igraph_vector_sort(&nodes_without_connection_to_provider_in_A);
+
 		for(int i = 0; i < (int)igraph_strvector_size(&self.AS_providers); i++){
 			char *provider_node;
 			igraph_strvector_get(&self.AS_providers,i,&provider_node);
@@ -493,13 +532,15 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 				igraph_vector_t intersect;
 				igraph_vector_init(&intersect,0);
 				igraph_vector_intersect_sorted(&nodes_without_connection_to_provider_in_A,&current_nodes_without_connection_to_provider_in_A,&intersect);
-				igraph_vector_destroy(&nodes_without_connection_to_provider_in_A);
+				//igraph_vector_destroy(&nodes_without_connection_to_provider_in_A);
 				igraph_vector_copy(&nodes_without_connection_to_provider_in_A,&intersect);
+				igraph_vector_destroy(&intersect);
 			}
 			else{
 				igraph_vector_clear(&nodes_without_connection_to_provider_in_A);
 			}
-			igraph_vector_clear(&current_nodes_without_connection_to_provider_in_A);
+			igraph_vector_destroy(&current_nodes_without_connection_to_provider_in_A);
+			igraph_vector_destroy(&length_to_provider_in_network_A);
 		}
 		igraph_vector_t nodes_without_connection_to_provider_in_B;
 		igraph_vector_init(&nodes_without_connection_to_provider_in_B,0);
@@ -543,9 +584,11 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 			igraph_vector_init(&intersect,0);
 
 			igraph_vector_intersect_sorted(&nodes_without_connection_to_provider_in_B,&current_nodes_without_connection_to_provider_in_B,&intersect);
-			igraph_vector_destroy(&nodes_without_connection_to_provider_in_B);
+			//igraph_vector_destroy(&nodes_without_connection_to_provider_in_B);
 			igraph_vector_copy(&nodes_without_connection_to_provider_in_B,&intersect);
-			igraph_vector_clear(&current_nodes_without_connection_to_provider_in_B);
+			igraph_vector_destroy(&current_nodes_without_connection_to_provider_in_B);
+			igraph_vector_destroy(&intersect);
+			igraph_vector_destroy(&length_to_provider_in_network_B);
 		}
 		igraph_strvector_t names_of_nodes_lost_in_A,names_of_nodes_lost_in_B;
 		igraph_strvector_t attr_names_of_nodes_lost_in_A,attr_names_of_nodes_lost_in_B;
@@ -582,15 +625,15 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 		}
 		igraph_delete_vertices(&current_interaction_graph,igraph_vss_vector(&nodes_to_delete_current));
 
-		igraph_strvector_destroy(&attrCurrentInter);
-		igraph_strvector_init(&attrCurrentInter,0);
+//		igraph_strvector_destroy(&attrCurrentInter);
+		igraph_strvector_clear(&attrCurrentInter);
 		igraph_cattribute_VASV(&current_interaction_graph,"name",igraph_vss_all(),&attrCurrentInter);
 	
 		igraph_vector_t degreesCurrent;
 		igraph_vector_init(&degreesCurrent,0);
 		igraph_degree(&current_interaction_graph,&degreesCurrent,igraph_vss_all(),IGRAPH_ALL,IGRAPH_LOOPS);
-		igraph_strvector_destroy(&list_of_nodes_to_delete);
-		igraph_strvector_init(&list_of_nodes_to_delete,0);
+//		igraph_strvector_destroy(&list_of_nodes_to_delete);
+		igraph_strvector_clear(&list_of_nodes_to_delete);
 
 		for(int i = 0; i < (int)igraph_vector_size(&degreesCurrent); i++){
 			if(igraph_vector_e(&degreesCurrent,i) < 1){ 
@@ -599,10 +642,34 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 				igraph_strvector_add(&list_of_nodes_to_delete,node);	
 			}
 		}
+		igraph_vector_destroy(&degreesCurrent);
+		igraph_strvector_destroy(&nodes_to_delete);
+		igraph_strvector_destroy(&attrCurrentInter);
+		igraph_vector_destroy(&nodes_to_delete_current);
+		igraph_strvector_destroy(&attr_names_of_nodes_lost_in_A);
+		igraph_strvector_destroy(&attr_names_of_nodes_lost_in_B);
+		igraph_strvector_destroy(&names_of_nodes_lost_in_B);
+		igraph_strvector_destroy(&names_of_nodes_lost_in_A);
+		igraph_vector_destroy(&nodes_without_connection_to_provider_in_A);
+		igraph_vector_destroy(&range);
+		igraph_vector_destroy(&nodes_without_connection_to_provider_in_B);
+		igraph_strvector_destroy(&alive_nodes_in_A);
+		igraph_strvector_destroy(&alive_nodes_in_B);
 	}
 	igraph_copy(&self.AS_network,&current_graph_A);
 	igraph_copy(&self.physical_network,&current_graph_B);
 	igraph_copy(&self.interactions_network,&current_interaction_graph);
+	
+	igraph_strvector_destroy(&list_of_nodes_to_delete);
+	igraph_destroy(&current_graph_A);
+	igraph_destroy(&current_graph_B);
+	igraph_destroy(&current_interaction_graph);
+	igraph_strvector_destroy(&attrA);
+	igraph_strvector_destroy(&attrB);
+	igraph_strvector_destroy(&attrC);
+	igraph_strvector_destroy(&nodes_to_delete_in_A);
+	igraph_strvector_destroy(&nodes_to_delete_in_B);
+
 	return self;
 }
 
@@ -620,6 +687,8 @@ float get_radio_of_funtional_nodes_in_AS_network(InterdependentGraph self){
 	}
 	float functional_nodes_in_AS_net = (float)igraph_vector_size(&nodes);
 	float compute = (functional_nodes_in_AS_net)/((float)self.initial_number_of_functional_nodes_in_AS_net*1.0);
+	igraph_vector_destroy(&degrees);
+	igraph_vector_destroy(&nodes);
 	return compute;
 }
 

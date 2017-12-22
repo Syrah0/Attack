@@ -1,0 +1,43 @@
+RESULTADOS:
+
+PARALELISMO PRUEBAS | PARALELISMO 3 ATAQUES | PARALELISMO ATAQUES | NUM PRUEBAS |     TIEMPO s      | TIEMPO m
+
+		X						X						-				500			2773.7826			~14
+		X						-						-				500			2344.641931			~12
+		X						-						X				500			MUCHOS THREADS => NO SE PUEDE
+
+		X						-						X				200				5391.1518		24:14
+
+		X						X						X				500			 NO NO NO
+
+		X						X						-				1				1.99			0:01.26
+		X						-						-				1				1.60			0:01.90
+		X						-						X				1				18.48			0:05.32  
+		X						X						X				1				2.67			0:01.52
+
+		X						X						-				8				20.05			0:08:77
+		X						-						-				8				21.07			0:08.64
+		X						-						X				8				174.54			0:46.66
+		X						X						X				8				42.825			0:14.41
+
+
+
+		8 threads! 
+
+SIN PARALELISMO!!
+
+500 707.6484  11:50
+1	1.456  0:01.51
+8	11.12  0:11.31
+
+
+PARALELISMO PRUEBAS | PARALELISMO 3 ATAQUES | PARALELISMO ATAQUES | NUM PRUEBAS |     TIEMPO s      | TIEMPO m
+
+		X						X						-				500			2773.7826			~14
+		X						-						-				500			2344.641931			~12 **
+
+		X						X						-				1				1.99			0:01.26 **
+		X						-						-				1				1.60			0:01.90
+
+		X						X						-				8				20.05			0:08:77
+		X						-						-				8				21.07			0:08.64 **

@@ -14,7 +14,7 @@ igraph_vector_t get_degrees_power_law(int n, float lamda);
 igraph_t generate_power_law_graph(int n, float lamda, double epsilon);
 igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network, int max_number_of_interdependencies);
 igraph_strvector_t set_physical_suppliers(igraph_t interdepency_network, igraph_strvector_t logic_suppliers);
-igraph_t generate_logic_network(int n, float alpha);
+igraph_t generate_logic_network(int n, float alpha, int numT);
 igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inter, igraph_t interdep_graph);
 igraph_t generate_physical_network(int n, double x_axis, double y_axis);
 int searchNode(igraph_t net, char *val);
@@ -23,7 +23,10 @@ int vectorHas(igraph_vector_t vector, int val);
 int min(int x, int y);
 double distance(double x1, double y1, double x2, double y2);
 
-jmp_buf env;
+jmp_buf *env = NULL;
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+int thr = 0;
+//jmp_buf env;
 
 double distance(double x1, double y1, double x2, double y2){
 	return sqrt(pow(x1-x2,2) + pow(y1-y2,2));
@@ -54,15 +57,26 @@ igraph_vector_t randomSample(igraph_vector_t cand, int val){
 	igraph_vector_init(&sample,0);
 	int i = 0;
 	int length = (int)igraph_vector_size(&cand);
-	while(1){
-		if(i == val){
-			break;
-		}
-		int index = (int)rand()/(RAND_MAX / (length + 1) + 1);
-		int sampleVal = (int)igraph_vector_e(&cand,index);
-		if(!vectorHas(sample,sampleVal)){
-			igraph_vector_push_back(&sample,sampleVal);
-			i++;
+	//print_vector(&cand, stdout);
+	if(length == val){
+		igraph_vector_copy(&sample,&cand);
+	}
+	else{
+		while(1){
+			if(i == val){
+				break;
+			}
+			int index = (int)rand()/(RAND_MAX / length + 1);
+			int sampleVal = (int)igraph_vector_e(&cand,index);
+			if(index >= length){
+				//fprintf(stderr, "ERRRRRRRRRRRRRRRRRRROOOOORRRRRR\n");
+				exit(1);
+			}
+			//fprintf(stderr, "index: %d\n", index);
+			if(!vectorHas(sample,sampleVal)){
+				igraph_vector_push_back(&sample,sampleVal);
+				i++;
+			}
 		}
 	}
 	return sample;
@@ -138,6 +152,9 @@ igraph_t generate_physical_network(int n, double x_axis, double y_axis){
 		igraph_strvector_add(&id_list,id);
 	}
 	igraph_cattribute_VAS_setv(&graph,"name",&id_list);
+	igraph_vector_destroy(&x_coordinates);
+	igraph_vector_destroy(&y_coordinates);
+	igraph_strvector_destroy(&id_list);
 	return graph;
 }
 
@@ -159,27 +176,42 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 		igraph_vector_init(&k_neighbors,0);
 		char attr[30];
 		sprintf(attr, "l%d", k);
-		int node_neigh;
-		node_neigh = searchNode(logic_network,attr) + init_number_of_nodes_logic;
+		int node_neigh, node_neigh_aux;
+		node_neigh_aux = searchNode(logic_network,attr);
+		node_neigh = node_neigh_aux + init_number_of_nodes_logic;
 
 		igraph_neighborhood_size(&interdep_graph,&k_neighbors,igraph_vss_1(node_neigh),1,IGRAPH_ALL);
 		if((int)igraph_vector_e(&k_neighbors,0) == n_inter){
-			igraph_vector_push_back(&candidates_list,k);
+			igraph_vector_push_back(&candidates_list,node_neigh_aux);
+			//fprintf(stderr, "aux %d, k: %d\n", node_neigh_aux, k);
 		}
+		igraph_vector_destroy(&k_neighbors);
 	}
 	int max_sample = igraph_vector_size(&candidates_list);
 	int min_value = min(max_sample,n);
-
-	igraph_vector_t sample = randomSample(candidates_list, min_value);
-
 	int values = 0;
-	for(int k = 0; k < min_value; k++){
-		char *attr;
-		igraph_strvector_get(&logic_network_nodes_ids,igraph_vector_e(&sample,k),&attr);
-		if(!dict_has(&supplier_list, attr)){
-			dict_add(&supplier_list, attr, attr); 
-			values++;
-		}		
+	//fprintf(stderr, "min %d, max %d\n", min_value, max_sample);
+	if(min_value != 0){
+		//fprintf(stderr, "%s\n", "AQUI");
+		igraph_vector_t sample = randomSample(candidates_list, min_value);
+	//	print_vector(&sample,stdout);
+		for(int k = 0; k < min_value; k++){
+			char *attr;
+		//	fprintf(stderr, "%s\n", "HOLA");
+		//	printStr(&logic_network_nodes_ids);
+		//	fprintf(stderr, "acc: %d\n", (int)igraph_vector_e(&sample,k));
+			igraph_strvector_get(&logic_network_nodes_ids,igraph_vector_e(&sample,k),&attr);
+		//	fprintf(stderr, "%s\n", "GET");
+			if(!dict_has(&supplier_list, attr)){
+				dict_add(&supplier_list, attr, attr); 
+				values++;
+		//		fprintf(stderr, "%s\n", "GET RDY");
+			}
+		//	fprintf(stderr, "%s\n", "LISTO");		
+		}
+	//	fprintf(stderr, "%s\n", "DESTROY");
+		igraph_vector_destroy(&sample);
+	//	fprintf(stderr, "%s\n", "DESTROY RDY");
 	}
 	if(n > max_sample){
 		while(values < n){
@@ -192,6 +224,7 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 			}
 		}
 	}
+	//fprintf(stderr, "%s\n", "ACA");
 
 	igraph_strvector_t supplier_list_ret;
 	igraph_strvector_init(&supplier_list_ret,0);
@@ -203,14 +236,25 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 		supplier_list = supplier_list->next;
 	}
 
+	igraph_strvector_destroy(&logic_network_nodes_ids);
+	igraph_vector_destroy(&candidates_list);
+	dict_free(&supplier_list);
+	free(supplier_list);
 	return supplier_list_ret;
 }
 
-igraph_t generate_logic_network(int n, float alpha){
+igraph_t generate_logic_network(int n, float alpha, int numT){
 	igraph_i_set_attribute_table(&igraph_cattribute_table);
 
-	
+	pthread_mutex_lock(&m);
+	if(env == NULL){
+		//fprintf(stderr, "%s\n", "ENTRE");
+		env = (jmp_buf*)malloc(sizeof(jmp_buf)*numT);
+		//fprintf(stderr, "num: %d\n", numT);
+	}
 	igraph_t graph = generate_power_law_graph(n, alpha, 0.1);
+	pthread_mutex_unlock(&m);
+	
 	igraph_strvector_t id_list;
 	igraph_strvector_init(&id_list,0);
 	for(int i = 0; i < n; i++){
@@ -219,6 +263,7 @@ igraph_t generate_logic_network(int n, float alpha){
 		igraph_strvector_add(&id_list,id);
 	}
 	igraph_cattribute_VAS_setv(&graph,"name",&id_list);
+	igraph_strvector_destroy(&id_list);
 	return graph;
 }
 
@@ -243,8 +288,10 @@ igraph_strvector_t set_physical_suppliers(igraph_t interdepency_network, igraph_
 			igraph_strvector_get(&interdepency_network_ids,(int)igraph_vector_e(&nodes_name_neighbors,i),&neigh);
 			igraph_strvector_add(&supplier_list,neigh);
 		}
+		igraph_vector_destroy(&nodes_name_neighbors);
 	}
 
+	igraph_strvector_destroy(&interdepency_network_ids);
 	return supplier_list;	
 }
 
@@ -297,11 +344,16 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 		}
 	}
 
+	igraph_strvector_destroy(&physical_network_nodes_ids);
+	igraph_strvector_destroy(&logic_network_nodes_ids);
+	dict_free(&physical_nodes_included);
+	free(physical_nodes_included);
 	return graph;
 }
 
 void handler(int signum){
-	longjmp(env,1);
+//	pthread_mutex_lock(&m);
+	longjmp(env[thr],1);
 }
 
 // ver tema de exceptions!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -309,6 +361,7 @@ igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 	igraph_t g;
 	igraph_vector_t node_degrees;
 	signal(SIGABRT, handler);
+	//fprintf(stderr, "thr: %d\n", thr);
 	while(1){
 		node_degrees = get_degrees_power_law(n,lamda);
 		int sum = igraph_vector_sum(&node_degrees);
@@ -317,13 +370,18 @@ igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 			break;
 		}
 	}
-	if(setjmp(env) == 0){
+	//pthread_mutex_lock(&m);
+	if(setjmp(env[thr]) == 0){
 		igraph_degree_sequence_game(&g,&node_degrees,0,IGRAPH_DEGSEQ_VL);	
 	}
 	else{
+	//	pthread_mutex_unlock(&m);
+		igraph_vector_destroy(&node_degrees);
 		return generate_power_law_graph(n,lamda,epsilon);	
 	}
-
+	thr++;
+	//pthread_mutex_unlock(&m);
+	igraph_vector_destroy(&node_degrees);
 	return g;
 }
 
@@ -347,6 +405,7 @@ igraph_vector_t get_degrees_power_law(int n, float lamda){
 		int newValue = (int)igraph_vector_e(&node_degrees,0) + 1;
 		igraph_vector_set(&node_degrees,0,newValue);
 	}
+	igraph_vector_destroy(&choices_x);
 	return node_degrees;
 }
 
@@ -364,4 +423,8 @@ int weighted_choice(igraph_vector_t c1, float* c2, int n){
 		}
 		up_to += w;
 	}
+}
+
+void freeEnv(){
+	free(env);
 }
