@@ -10,15 +10,6 @@
 #include <time.h>
 #include <pthread.h>
 
-
-/*typedef struct {
-	int READ_flag, n_logic, n_inter, n_phys, n_logic_suppliers, num;
-	double exp, x_coordinate, y_coordinate;
-	char version[100];
-	pthread_t pid;
-	//jmp_buf env;
-} Param;
-*/
 typedef struct {
 	int n_inter, n_logic_suppliers,num;
 	double exp, x_coordinate, y_coordinate;
@@ -26,10 +17,6 @@ typedef struct {
 	InterdependentGraph net;
 	pthread_t pid;
 } AttackParam;
-
-//Param *params;
-//pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-//int version = 1;
 
 /* Attack only logic network */
 void *thrLogic(void *ptr){
@@ -168,38 +155,6 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 		igraph_vector_destroy(&csize);
 	}
 	// RUN TEST //
-/*	fprintf(stderr, "logic test attack %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	char *logic_attack_title = csv_title_generator("result",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"logic",version);
-	char output[300];
-	sprintf(output,"test_results/%s",logic_attack_title);
-	single_network_attack(network_system,"logic",output);
-
-	fprintf(stderr, "logic test attack fin %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	fprintf(stderr, "physical test attack %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	char *physical_attack_title = csv_title_generator("result",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"physical",version);
-	sprintf(output,"test_results/%s",physical_attack_title);
-	single_network_attack(network_system,"physical",output);
-
-	fprintf(stderr, "physical test attack fin %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	fprintf(stderr, "whole net test attack %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	char *simult_attack_title = csv_title_generator("result",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"both",version);
-	sprintf(output,"test_results/%s",simult_attack_title);
-	whole_system_attack(network_system,output);
-
-	fprintf(stderr, "whole test attack fin %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	fprintf(stderr, "---------------- Finished --------------- %lf\n", ((double)clock() / CLOCKS_PER_SEC));
-
-	free(logic_attack_title);
-	free(physical_attack_title);
-	free(simult_attack_title);
-*/
-
 	AttackParam attacks[3];
 	void *array[3] = {thrLogic,thrPhys,thrWhole};
 
@@ -221,24 +176,10 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 
 }
 
-/*
-void* funThread(void *ptr){
-	Param *p = ptr;
-	srand(time(NULL));
-	pthread_mutex_lock(&mutex);
-	sprintf(p->version,"%d",version);
-	version++;
-	pthread_mutex_unlock(&mutex);
-	run_test(p->x_coordinate, p->y_coordinate, p->exp, p->n_inter, p->n_logic_suppliers, p->version, p->n_logic, p->n_phys, p->READ_flag, p->num);
-	return NULL;
-}
-*/
-
 void main(int argc, char **argv){
 	int READ_flag, n_logic, n_inter, n_phys, n_logic_suppliers;
 	double exp, x_coordinate, y_coordinate;
 	char *version;
-	//int numT;
 	struct timespec start, finish;
 	double elapsed;
 
@@ -253,7 +194,6 @@ void main(int argc, char **argv){
 		x_coordinate = atof(argv[6]); // width of the physical space for the physical network
 		y_coordinate = atof(argv[7]);  // length of the physical space for the physical network
 		version = argv[8];  // version for this kind of interdependent systems
-		//numT = atoi(argv[8]);
 		fprintf(stderr, "%s\n", version);
 
 		// If flag = True read from files
@@ -263,28 +203,6 @@ void main(int argc, char **argv){
 		else{
 			READ_flag = 0;
 		}
-/*		params = (Param*)malloc(sizeof(Param)*numT);
-
-		for(int i = 0; i < numT; i++){
-		//	fprintf(stderr, "CORRIENDO %d\n", i);
-			params[i].READ_flag = READ_flag;
-			params[i].n_logic = n_logic;
-			params[i].n_inter = n_inter;
-			params[i].n_phys = n_phys;
-			params[i].n_logic_suppliers = n_logic_suppliers;
-			params[i].exp = exp;
-			params[i].x_coordinate = x_coordinate;
-			params[i].y_coordinate = y_coordinate;
-			params[i].num = numT;
-			pthread_create(&params[i].pid,NULL,funThread,&params[i]);
-		}
-		for(int i = 0; i < numT; i++){
-			pthread_join(params[i].pid,NULL);
-		//	fprintf(stderr, "Termino thread version %s\n", params[i].version);
-		}
-		free(params);
-		freeEnv();
-*/
 		run_test(x_coordinate, y_coordinate, exp, n_inter, n_logic_suppliers, version, n_logic, n_phys, READ_flag);
 	}
 	else{

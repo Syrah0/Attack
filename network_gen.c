@@ -23,9 +23,6 @@ int vectorHas(igraph_vector_t vector, int val);
 int min(int x, int y);
 double distance(double x1, double y1, double x2, double y2);
 
-//jmp_buf *env = NULL;
-//pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-//int thr = 0;
 jmp_buf env; // usado para la captura de señal
 
 /* Calcula la distancia entre dos puntos */
@@ -231,12 +228,7 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 igraph_t generate_logic_network(int n, float alpha){
 	igraph_i_set_attribute_table(&igraph_cattribute_table);
 
-//	pthread_mutex_lock(&m);
-/*	if(env == NULL){
-		env = (jmp_buf*)malloc(sizeof(jmp_buf)*numT);
-	}*/
 	igraph_t graph = generate_power_law_graph(n, alpha, 0.1);
-//	pthread_mutex_unlock(&m);
 	
 	igraph_strvector_t id_list;
 	igraph_strvector_init(&id_list,0);
@@ -408,7 +400,3 @@ int weighted_choice(igraph_vector_t c1, float* c2, int n){
 		up_to += w;
 	}
 }
-
-/*void freeEnv(){
-	free(env);
-}*/
