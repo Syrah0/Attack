@@ -14,7 +14,7 @@ igraph_vector_t get_degrees_power_law(int n, float lamda);
 igraph_t generate_power_law_graph(int n, float lamda, double epsilon);
 igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network, int max_number_of_interdependencies);
 igraph_strvector_t set_physical_suppliers(igraph_t interdepency_network, igraph_strvector_t logic_suppliers);
-igraph_t generate_logic_network(int n, float alpha, int numT);
+igraph_t generate_logic_network(int n, float alpha);
 igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inter, igraph_t interdep_graph);
 igraph_t generate_physical_network(int n, double x_axis, double y_axis);
 int searchNode(igraph_t net, char *val);
@@ -23,10 +23,10 @@ int vectorHas(igraph_vector_t vector, int val);
 int min(int x, int y);
 double distance(double x1, double y1, double x2, double y2);
 
-jmp_buf *env = NULL;
-pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-int thr = 0;
-//jmp_buf env;
+//jmp_buf *env = NULL;
+//pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+//int thr = 0;
+jmp_buf env;
 
 double distance(double x1, double y1, double x2, double y2){
 	return sqrt(pow(x1-x2,2) + pow(y1-y2,2));
@@ -57,7 +57,6 @@ igraph_vector_t randomSample(igraph_vector_t cand, int val){
 	igraph_vector_init(&sample,0);
 	int i = 0;
 	int length = (int)igraph_vector_size(&cand);
-	//print_vector(&cand, stdout);
 	if(length == val){
 		igraph_vector_copy(&sample,&cand);
 	}
@@ -68,11 +67,6 @@ igraph_vector_t randomSample(igraph_vector_t cand, int val){
 			}
 			int index = (int)rand()/(RAND_MAX / length + 1);
 			int sampleVal = (int)igraph_vector_e(&cand,index);
-			if(index >= length){
-				//fprintf(stderr, "ERRRRRRRRRRRRRRRRRRROOOOORRRRRR\n");
-				exit(1);
-			}
-			//fprintf(stderr, "index: %d\n", index);
 			if(!vectorHas(sample,sampleVal)){
 				igraph_vector_push_back(&sample,sampleVal);
 				i++;
@@ -183,35 +177,23 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 		igraph_neighborhood_size(&interdep_graph,&k_neighbors,igraph_vss_1(node_neigh),1,IGRAPH_ALL);
 		if((int)igraph_vector_e(&k_neighbors,0) == n_inter){
 			igraph_vector_push_back(&candidates_list,node_neigh_aux);
-			//fprintf(stderr, "aux %d, k: %d\n", node_neigh_aux, k);
 		}
 		igraph_vector_destroy(&k_neighbors);
 	}
 	int max_sample = igraph_vector_size(&candidates_list);
 	int min_value = min(max_sample,n);
 	int values = 0;
-	//fprintf(stderr, "min %d, max %d\n", min_value, max_sample);
 	if(min_value != 0){
-		//fprintf(stderr, "%s\n", "AQUI");
 		igraph_vector_t sample = randomSample(candidates_list, min_value);
-	//	print_vector(&sample,stdout);
 		for(int k = 0; k < min_value; k++){
 			char *attr;
-		//	fprintf(stderr, "%s\n", "HOLA");
-		//	printStr(&logic_network_nodes_ids);
-		//	fprintf(stderr, "acc: %d\n", (int)igraph_vector_e(&sample,k));
 			igraph_strvector_get(&logic_network_nodes_ids,igraph_vector_e(&sample,k),&attr);
-		//	fprintf(stderr, "%s\n", "GET");
 			if(!dict_has(&supplier_list, attr)){
 				dict_add(&supplier_list, attr, attr); 
 				values++;
-		//		fprintf(stderr, "%s\n", "GET RDY");
 			}
-		//	fprintf(stderr, "%s\n", "LISTO");		
 		}
-	//	fprintf(stderr, "%s\n", "DESTROY");
 		igraph_vector_destroy(&sample);
-	//	fprintf(stderr, "%s\n", "DESTROY RDY");
 	}
 	if(n > max_sample){
 		while(values < n){
@@ -224,8 +206,6 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 			}
 		}
 	}
-	//fprintf(stderr, "%s\n", "ACA");
-
 	igraph_strvector_t supplier_list_ret;
 	igraph_strvector_init(&supplier_list_ret,0);
 	while(1){
@@ -243,17 +223,15 @@ igraph_strvector_t set_logic_suppliers(igraph_t logic_network, int n, int n_inte
 	return supplier_list_ret;
 }
 
-igraph_t generate_logic_network(int n, float alpha, int numT){
+igraph_t generate_logic_network(int n, float alpha){
 	igraph_i_set_attribute_table(&igraph_cattribute_table);
 
-	pthread_mutex_lock(&m);
-	if(env == NULL){
-		//fprintf(stderr, "%s\n", "ENTRE");
+//	pthread_mutex_lock(&m);
+/*	if(env == NULL){
 		env = (jmp_buf*)malloc(sizeof(jmp_buf)*numT);
-		//fprintf(stderr, "num: %d\n", numT);
-	}
+	}*/
 	igraph_t graph = generate_power_law_graph(n, alpha, 0.1);
-	pthread_mutex_unlock(&m);
+//	pthread_mutex_unlock(&m);
 	
 	igraph_strvector_t id_list;
 	igraph_strvector_init(&id_list,0);
@@ -352,16 +330,13 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 }
 
 void handler(int signum){
-//	pthread_mutex_lock(&m);
-	longjmp(env[thr],1);
+	longjmp(env,1);
 }
 
-// ver tema de exceptions!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 	igraph_t g;
 	igraph_vector_t node_degrees;
 	signal(SIGABRT, handler);
-	//fprintf(stderr, "thr: %d\n", thr);
 	while(1){
 		node_degrees = get_degrees_power_law(n,lamda);
 		int sum = igraph_vector_sum(&node_degrees);
@@ -370,17 +345,13 @@ igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 			break;
 		}
 	}
-	//pthread_mutex_lock(&m);
-	if(setjmp(env[thr]) == 0){
+	if(setjmp(env) == 0){
 		igraph_degree_sequence_game(&g,&node_degrees,0,IGRAPH_DEGSEQ_VL);	
 	}
 	else{
-	//	pthread_mutex_unlock(&m);
 		igraph_vector_destroy(&node_degrees);
 		return generate_power_law_graph(n,lamda,epsilon);	
 	}
-	thr++;
-	//pthread_mutex_unlock(&m);
 	igraph_vector_destroy(&node_degrees);
 	return g;
 }
@@ -425,6 +396,6 @@ int weighted_choice(igraph_vector_t c1, float* c2, int n){
 	}
 }
 
-void freeEnv(){
+/*void freeEnv(){
 	free(env);
-}
+}*/

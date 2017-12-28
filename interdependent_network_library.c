@@ -14,7 +14,7 @@ typedef struct interp{
 } InterdependentGraph;
 
 InterdependentGraph initInterGraph(){
-	InterdependentGraph graph;// = (InterdependentGraph)malloc(sizeof(*graph));
+	InterdependentGraph graph;
 	igraph_empty(&graph.AS_network,0,IGRAPH_UNDIRECTED);
 	igraph_empty(&graph.physical_network,0,IGRAPH_UNDIRECTED);
 	igraph_empty(&graph.interactions_network,0,IGRAPH_UNDIRECTED);
@@ -23,7 +23,7 @@ InterdependentGraph initInterGraph(){
 	graph.initial_number_of_functional_nodes_in_AS_net = 0;
 	return graph;
 }
-
+/*
 void freeInter(InterdependentGraph *graph){
 	InterdependentGraph ptr = *graph;
 	igraph_destroy(&ptr.AS_network);
@@ -31,7 +31,6 @@ void freeInter(InterdependentGraph *graph){
 	igraph_destroy(&ptr.interactions_network);
 	igraph_strvector_destroy(&ptr.physical_providers);
 	igraph_strvector_destroy(&ptr.AS_providers);
-	//free(graph);
 }
 
 void print_vector(igraph_vector_t *v, FILE *f) {
@@ -50,9 +49,8 @@ void printStr(igraph_strvector_t *vector){
 	}
 	fprintf(stderr, "\n");
 }
-
+*/
 int strvectorHas(igraph_strvector_t *vector, char *val){
-	//printStr(vector);
 	int length = (int)igraph_strvector_size(vector);
 	int ret = -1;
 	if(length == 0){
@@ -70,7 +68,6 @@ int strvectorHas(igraph_strvector_t *vector, char *val){
 }
 
 char* csv_title_generator(char* graph_type, float x_coordinates, float y_coordinates, double pg_exponent, int n_dependence, int l_providers, char* attack_type, char* version){
-
 	char title[300], titleAux[300];
 	sprintf(title, "%s_%lfx%lf_exp_%lf_ndep_%d",graph_type,x_coordinates,y_coordinates,pg_exponent,n_dependence); 
 	if(strcmp(attack_type,"") != 0){
@@ -94,7 +91,6 @@ char* csv_title_generator(char* graph_type, float x_coordinates, float y_coordin
 	return ret;
 }
 
-// VER QUE SE LE PASA AL ELSE!!!
 igraph_t set_graph_from_csv(char* csv_file, igraph_t graph){
 	igraph_i_set_attribute_table(&igraph_cattribute_table);
 	FILE *F;
@@ -199,9 +195,7 @@ void write_graph_with_node_names(igraph_t graph, char* title){
 	fclose(F);
 	igraph_strvector_destroy(&names);
 	igraph_vector_destroy(&lst);
-	//fprintf(stderr, "%s\n", "FIN");
 }
-
 
 
 void save_to_pdf(InterdependentGraph Igraph, float x_coordinates, float y_coordinates, double pg_exponent, int n_dependence, char *version){
@@ -214,38 +208,26 @@ void save_to_pdf(InterdependentGraph Igraph, float x_coordinates, float y_coordi
 	char filename[300];
 	FILE *F;
 
-//	fprintf(stderr, "%s\n", "pass 1");
 	char *logic_name = csv_title_generator("logic",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
-//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",logic_name);
 	write_graph_with_node_names(logic_graph,filename);
-//	fprintf(stderr, "%s\n", "write rdy");
 
 	free(logic_name);
 
-//	fprintf(stderr, "%s\n", "pass 2");
 	char *physical_name = csv_title_generator("physic",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
-//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",physical_name);	
 	write_graph_with_node_names(physical_graph,filename);
-//	fprintf(stderr, "%s\n", "write rdy");
 
 	free(physical_name);
 	
-//	fprintf(stderr, "%s\n", "pass 3");
 	char *dependence_name = csv_title_generator("dependence",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
-//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",dependence_name);
 	write_graph_with_node_names(dependences_graph,filename);
-//	fprintf(stderr, "%s\n", "write rdy");
 
 	free(dependence_name);
 
-//	fprintf(stderr, "%s\n", "pass 4");
 	char *providers_name = csv_title_generator("providers",x_coordinates,y_coordinates,pg_exponent,n_dependence,len_l_providers,"",version);
-//	fprintf(stderr, "%s\n", "csv rdy");
 	sprintf(filename,"networks/%s",providers_name);
-//	fprintf(stderr, "%s\n", "pass 5");
 	F = fopen(filename,"w");
 	if(F ==  NULL){
 		fprintf(stderr, "%s\n", "Error Archivo");
@@ -532,7 +514,6 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 				igraph_vector_t intersect;
 				igraph_vector_init(&intersect,0);
 				igraph_vector_intersect_sorted(&nodes_without_connection_to_provider_in_A,&current_nodes_without_connection_to_provider_in_A,&intersect);
-				//igraph_vector_destroy(&nodes_without_connection_to_provider_in_A);
 				igraph_vector_copy(&nodes_without_connection_to_provider_in_A,&intersect);
 				igraph_vector_destroy(&intersect);
 			}
@@ -584,7 +565,6 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 			igraph_vector_init(&intersect,0);
 
 			igraph_vector_intersect_sorted(&nodes_without_connection_to_provider_in_B,&current_nodes_without_connection_to_provider_in_B,&intersect);
-			//igraph_vector_destroy(&nodes_without_connection_to_provider_in_B);
 			igraph_vector_copy(&nodes_without_connection_to_provider_in_B,&intersect);
 			igraph_vector_destroy(&current_nodes_without_connection_to_provider_in_B);
 			igraph_vector_destroy(&intersect);
@@ -625,14 +605,12 @@ InterdependentGraph attack_nodes(InterdependentGraph self, igraph_strvector_t li
 		}
 		igraph_delete_vertices(&current_interaction_graph,igraph_vss_vector(&nodes_to_delete_current));
 
-//		igraph_strvector_destroy(&attrCurrentInter);
 		igraph_strvector_clear(&attrCurrentInter);
 		igraph_cattribute_VASV(&current_interaction_graph,"name",igraph_vss_all(),&attrCurrentInter);
 	
 		igraph_vector_t degreesCurrent;
 		igraph_vector_init(&degreesCurrent,0);
 		igraph_degree(&current_interaction_graph,&degreesCurrent,igraph_vss_all(),IGRAPH_ALL,IGRAPH_LOOPS);
-//		igraph_strvector_destroy(&list_of_nodes_to_delete);
 		igraph_strvector_clear(&list_of_nodes_to_delete);
 
 		for(int i = 0; i < (int)igraph_vector_size(&degreesCurrent); i++){
@@ -691,6 +669,3 @@ float get_radio_of_funtional_nodes_in_AS_network(InterdependentGraph self){
 	igraph_vector_destroy(&nodes);
 	return compute;
 }
-
-// PARA VER LA CREACION DE NODOS L0, P0 ETC.... VER QUE NODO ESTA ASOCIADO A ESE ATTR => COPIO/BORRO EL NODO (NUMERO)
-// LUEGO PARA CREAR LOS ARCHIVOS CREAR ARCHIVO CON LOS NODOS (NUMEROS) Y OTRO CON LOS ATTR (L0, P0, ETC...)

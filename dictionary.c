@@ -32,16 +32,15 @@ Dict init_dict(KVPair val){
 	return dict;
 }
 
+/*
 void printDict(volatile Dict *dictionary){
 	Dict ptr = *dictionary;
-	//fprintf(stderr, "key: %s, val: %s\n", dict->head->key, dict->head->value);
 	while(ptr != NULL){
 		fprintf(stderr, "next: %s\n", ptr->head->value);
-		///fprintf(stderr, "key: %s, val: %s\n", dict->head->key, dict->head->value);
 		ptr = ptr->next;
 	}
-	fprintf(stderr, "LISTO\n");
 }
+*/
 
 void dict_add(volatile Dict *dictionary, const char *key, char *value) {
 	KVPair newKv = init_kv(key,value);
@@ -56,7 +55,6 @@ void dict_add(volatile Dict *dictionary, const char *key, char *value) {
 		}
 		ptr->next = newDict;
 	}
-	//fprintf(stderr, "%s\n", "AÑADIDO");
 }
 
 int dict_has(Dict *dictionary, const char *key) {
@@ -95,8 +93,6 @@ void dict_free(Dict *dictionary) {
     while(ptr != NULL){
 	    kv_free(&ptr->head);
 	    ptr = ptr->next;
-	    //dict_free(&next);
-	    //free(ptr);
 	}
 }
 
