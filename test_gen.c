@@ -6,6 +6,7 @@
 #include <time.h>
 #include <pthread.h>
 
+/*
 typedef struct pthread {
 	igraph_strvector_t samp;
 	InterdependentGraph graph_copy;
@@ -16,7 +17,9 @@ typedef struct pthread {
 } PTH;
 
 typedef void *(*Thread_fun)(void *);
+*/
 
+/* Se encarga de calcular una muestra aleatoria de tamaño k a partir de un vector de strings */
 igraph_strvector_t randomSampleStr(igraph_strvector_t strvector, int k){
 	int i = 0;
 	igraph_strvector_t newVector;
@@ -34,12 +37,14 @@ igraph_strvector_t randomSampleStr(igraph_strvector_t strvector, int k){
 	return newVector;
 }
 
+/* Calcula la media de un vector */
 float mean(igraph_vector_t v){
 	float sum = (float)igraph_vector_sum(&v);
 	float size = (float)igraph_vector_size(&v);
 	return (float)sum/size;
 }
 
+/* Calcula la desviacion estandar de un vector */
 float std(igraph_vector_t v, float mean){
 	float sum = 0;
 	int size = igraph_vector_size(&v);
@@ -52,6 +57,7 @@ float std(igraph_vector_t v, float mean){
 	return (float)pow(base,0.5);
 }
 
+/*
 void *threadsFun(void *ptr){
 	PTH *p = ptr;
 	InterdependentGraph graph_copy = p->graph_copy;
@@ -79,7 +85,9 @@ void* iterThread(void *ptr){
 	igraph_vector_destroy(&cols);
 	return NULL;
 }
+*/
 
+// this method calculates 100 iteration of attacks over a single system (logic net or physical net)
 void single_network_attack(InterdependentGraph interdependent_network, char *network_to_attack, char *file_name){
 	igraph_t physical_network = interdependent_network.physical_network;
 	igraph_strvector_t phys_suppliers = interdependent_network.physical_providers;
@@ -110,9 +118,7 @@ void single_network_attack(InterdependentGraph interdependent_network, char *net
 	
 	InterdependentGraph graph_init = initInterGraph();
  	graph_init = create_from_graph(graph_init,logic_network,logic_suppliers,physical_network,phys_suppliers,interdep_graph);
-	/* threads */
-//	PTH *pths = (PTH*)malloc(sizeof(PTH)*r);
-
+	
 	for(int j = 0; j < r; j++){
 		for(int i = 1; i < iteration_range; i++){
 			InterdependentGraph graph_copy = graph_init;
@@ -122,30 +128,8 @@ void single_network_attack(InterdependentGraph interdependent_network, char *net
 			float value = get_radio_of_funtional_nodes_in_AS_network(graph_copy);	
 			igraph_matrix_set(&iteration_results,i-1,j,value);
 		}
-	/*
-		//fprintf(stderr, "j single %s: %d\n", network_to_attack,j);
-		// LANZAR THREADS!
- 		pths[j].samp = samp;
- 		pths[j].graph_copy = graph_init;
- 		pths[j].iter = iteration_range;
- 			
-		if(pthread_create(&pths[j].pid, NULL, (Thread_fun)iterThread, (void *)&pths[j]) != 0){
-			fprintf(stderr, "No se puede crear nuevo thread de cliente\n");
-		}
-	*/
-		//fprintf(stderr, "j: %d\n", j);
 	}
-	/*
-	//fprintf(stderr, "esperando joins\n");
-	for(int j = 0; j < r; j++){
-	//	fprintf(stderr, "esperando %d de %s\n", j, network_to_attack);
-		pthread_join(pths[j].pid,NULL);
-		igraph_matrix_set_col(&iteration_results,&pths[j].vector,j);
-	}
-	
-//	fprintf(stderr, "%s %s\n", "escritura de ",network_to_attack);
-	free(pths);
-	*/
+
 	igraph_strvector_destroy(&samp);
 	FILE *F;
 	F = fopen(file_name,"w");
@@ -172,6 +156,7 @@ void single_network_attack(InterdependentGraph interdependent_network, char *net
 	igraph_matrix_destroy(&iteration_results);
 }
 
+// this method calculates 100 iteration of attacks over the whole system
 void whole_system_attack(InterdependentGraph interdependent_network, char *file_name){
 	igraph_t physical_network = interdependent_network.physical_network;
 	igraph_strvector_t phys_suppliers = interdependent_network.physical_providers;

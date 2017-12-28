@@ -26,12 +26,14 @@ double distance(double x1, double y1, double x2, double y2);
 //jmp_buf *env = NULL;
 //pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 //int thr = 0;
-jmp_buf env;
+jmp_buf env; // usado para la captura de señal
 
+/* Calcula la distancia entre dos puntos */
 double distance(double x1, double y1, double x2, double y2){
 	return sqrt(pow(x1-x2,2) + pow(y1-y2,2));
 }
 
+/* Calcula el minimo entre dos numeros */
 int min(int x, int y){
 	if(x < y){
 		return x;
@@ -39,6 +41,7 @@ int min(int x, int y){
 	return y;
 }
 
+/* Verifica si un valor dado se encuentra dentro de un vector o no */
 int vectorHas(igraph_vector_t vector, int val){
 	int length = (int)igraph_vector_size(&vector);
 	if(length == 0){
@@ -52,6 +55,7 @@ int vectorHas(igraph_vector_t vector, int val){
 	return 0;
 }
 
+/* Genera una muestra aleatoria de tamaño k (val) a partir de un vector (de enteros) dado */
 igraph_vector_t randomSample(igraph_vector_t cand, int val){
 	igraph_vector_t sample;
 	igraph_vector_init(&sample,0);
@@ -76,6 +80,7 @@ igraph_vector_t randomSample(igraph_vector_t cand, int val){
 	return sample;
 }
 
+/* Busca, dentro de una red, el nodo cuyo atributo sea "val" */
 int searchNode(igraph_t net, char *val){
 	for(int i = 0; i < (int)igraph_vcount(&net); i++){
 		if(strcmp(igraph_cattribute_VAS(&net, "name", i),val)==0){
@@ -285,23 +290,30 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 
 	Dict physical_nodes_included = NULL;
 	igraph_t graph;
+	// Create the graph
 	igraph_empty(&graph,(int)(igraph_strvector_size(&physical_network_nodes_ids)+igraph_strvector_size(&logic_network_nodes_ids)),IGRAPH_UNDIRECTED);
 	
+	// For each logic node select an x between 1 and max_number_of_interdependencies
 	for(int i = 0; i < (int)igraph_strvector_size(&logic_network_nodes_ids); i++){
 		int amount_of_neighbours  = 1 + (int)rand() / (RAND_MAX / (max_number_of_interdependencies) + 1);
+		// Select x nodes from physical network at random
 		for(int j = 0; j < amount_of_neighbours; j++){
 			int physical_node_index = (int)rand() / (RAND_MAX / (int)igraph_strvector_size(&physical_network_nodes_ids) + 1);
 			char *physical_node, *logic_node;
 			igraph_strvector_get(&physical_network_nodes_ids,physical_node_index,&physical_node);
 			igraph_strvector_get(&logic_network_nodes_ids,i,&logic_node);
-				
+
+			// Only include non-isolated nodes from the physical network				
 			if(!dict_has(&physical_nodes_included,physical_node)){
 				dict_add(&physical_nodes_included,physical_node,physical_node);
 			}
+
+			// Search ids in the respective network and get the associated node
 			int lNode, pNode;
 			pNode = searchNode(physical_network,physical_node);
 			lNode = searchNode(logic_network,logic_node) + (int)igraph_vcount(&physical_network);
 
+			// Set the connections in the connection list
 			igraph_add_edge(&graph,lNode,pNode);
 			igraph_cattribute_VAS_set(&graph,"name",lNode,logic_node);
 			igraph_cattribute_VAS_set(&graph,"name",pNode,physical_node);
@@ -310,6 +322,7 @@ igraph_t set_interdependencies(igraph_t physical_network, igraph_t logic_network
 	igraph_strvector_t dictVal;
 	dictVal = dict_values(&physical_nodes_included);
 
+	// Set new attributes
 	int newI = 0;
 	for(int i = 0; i < (int)igraph_vcount(&graph); i++){
 		char *query = (char*)igraph_cattribute_VAS(&graph,"name",i);
@@ -348,7 +361,7 @@ igraph_t generate_power_law_graph(int n, float lamda, double epsilon){
 	if(setjmp(env) == 0){
 		igraph_degree_sequence_game(&g,&node_degrees,0,IGRAPH_DEGSEQ_VL);	
 	}
-	else{
+	else{ // Catch signal. Repeat the procedure
 		igraph_vector_destroy(&node_degrees);
 		return generate_power_law_graph(n,lamda,epsilon);	
 	}

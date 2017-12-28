@@ -31,6 +31,7 @@ typedef struct {
 //pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 //int version = 1;
 
+/* Attack only logic network */
 void *thrLogic(void *ptr){
 	AttackParam *p = ptr;
 	struct timespec start, finish;
@@ -52,6 +53,7 @@ void *thrLogic(void *ptr){
 	return NULL;
 }
 
+/* Attack only physical network */
 void *thrPhys(void *ptr){
 	AttackParam *p = ptr;
 	struct timespec start, finish;
@@ -73,6 +75,7 @@ void *thrPhys(void *ptr){
 	return NULL;
 }
 
+/* Attack both networks */
 void *thrWhole(void *ptr){
 	AttackParam *p = ptr;
 	struct timespec start, finish;
@@ -97,8 +100,6 @@ void *thrWhole(void *ptr){
 
 void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter, int n_logic_suppliers, char *version, int n_logic, int n_phys, int READ_flag){
 	InterdependentGraph network_system = initInterGraph();
-//	InterdependentGraph network_system2 = initInterGraph();
-//	InterdependentGraph network_system3 = initInterGraph();
 	if(READ_flag){
 		fprintf(stderr, "start %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 				
@@ -124,6 +125,7 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 
 		fprintf(stderr, "start %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 		
+		// Generate AS network
 		igraph_t as_graph = generate_logic_network(n_logic,exp);
 
 		igraph_clusters(&as_graph, &member, &csize, &num, IGRAPH_WEAK);
@@ -153,12 +155,10 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 		fprintf(stderr, "Phys suppliers ready %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
 		network_system = create_from_graph(network_system,as_graph,as_suppliers,phys_graph,phys_suppliers,interdep_graph);
-//		network_system2 = create_from_graph(network_system2,as_graph,as_suppliers,phys_graph,phys_suppliers,interdep_graph);
-//		network_system3 = create_from_graph(network_system3,as_graph,as_suppliers,phys_graph,phys_suppliers,interdep_graph);
 
 		fprintf(stderr, "system created %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
-		save_to_pdf(network_system,x_coordinate,y_coordinate,exp,n_inter,version);//SE CAE
+		save_to_pdf(network_system,x_coordinate,y_coordinate,exp,n_inter,version);
 
 		fprintf(stderr, "system saved %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 		igraph_destroy(&as_graph);
@@ -167,6 +167,7 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 		igraph_vector_destroy(&member);
 		igraph_vector_destroy(&csize);
 	}
+	// RUN TEST //
 /*	fprintf(stderr, "logic test attack %lf\n", ((double)clock() / CLOCKS_PER_SEC));
 
 	char *logic_attack_title = csv_title_generator("result",x_coordinate,y_coordinate,exp,n_inter,n_logic_suppliers,"logic",version);
@@ -198,9 +199,9 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 	free(physical_attack_title);
 	free(simult_attack_title);
 */
+
 	AttackParam attacks[3];
 	void *array[3] = {thrLogic,thrPhys,thrWhole};
-//	InterdependentGraph array2[3] = {network_system,network_system2,network_system3};
 
 	for(int i = 0; i < 3; i++){
 		attacks[i].x_coordinate = x_coordinate;
@@ -208,7 +209,7 @@ void run_test(double x_coordinate, double y_coordinate, double exp, int n_inter,
 		attacks[i].exp = exp;
 		attacks[i].n_logic_suppliers = n_logic_suppliers;
 		attacks[i].n_inter = n_inter;
-		attacks[i].net = network_system; //array2[i];
+		attacks[i].net = network_system; 
 		sprintf(attacks[i].version,"%s",version);
 		attacks[i].num = i;
 		pthread_create(&attacks[i].pid,NULL,array[i],&attacks[i]);
@@ -227,7 +228,6 @@ void* funThread(void *ptr){
 	pthread_mutex_lock(&mutex);
 	sprintf(p->version,"%d",version);
 	version++;
-//	fprintf(stderr, "Entra thread version %s\n", p->version);
 	pthread_mutex_unlock(&mutex);
 	run_test(p->x_coordinate, p->y_coordinate, p->exp, p->n_inter, p->n_logic_suppliers, p->version, p->n_logic, p->n_phys, p->READ_flag, p->num);
 	return NULL;
@@ -245,17 +245,18 @@ void main(int argc, char **argv){
 	clock_gettime(CLOCK_MONOTONIC,&start);
 
 	if(argc == 9 || argc == 10){
-		n_logic = atoi(argv[1]);
-		n_phys = atoi(argv[2]);
-		n_inter = atoi(argv[3]);
-		n_logic_suppliers = atoi(argv[4]);
-		exp = atof(argv[5]);
-		x_coordinate = atof(argv[6]);
-		y_coordinate = atof(argv[7]);
-		version = argv[8]; 
+		n_logic = atoi(argv[1]); // nodes in the logic network
+		n_phys = atoi(argv[2]); // nodes in the physical network
+		n_inter = atoi(argv[3]); // maximun amount of interconnections
+		n_logic_suppliers = atoi(argv[4]); // amount of suppliers
+		exp = atof(argv[5]); // lambda exponent for logic network Power-Law
+		x_coordinate = atof(argv[6]); // width of the physical space for the physical network
+		y_coordinate = atof(argv[7]);  // length of the physical space for the physical network
+		version = argv[8];  // version for this kind of interdependent systems
 		//numT = atoi(argv[8]);
 		fprintf(stderr, "%s\n", version);
 
+		// If flag = True read from files
 		if(argc == 10){
 			READ_flag = atoi(argv[9]);
 		}
@@ -282,11 +283,6 @@ void main(int argc, char **argv){
 		//	fprintf(stderr, "Termino thread version %s\n", params[i].version);
 		}
 		free(params);
-		freeEnv();
-*/
-/*		for(int i = 0; i < numT; i++){
-			run_test(x_coordinate, y_coordinate, exp, n_inter, n_logic_suppliers, "1000", n_logic, n_phys, READ_flag, numT);
-		}
 		freeEnv();
 */
 		run_test(x_coordinate, y_coordinate, exp, n_inter, n_logic_suppliers, version, n_logic, n_phys, READ_flag);
